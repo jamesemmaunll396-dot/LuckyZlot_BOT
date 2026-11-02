@@ -8,36 +8,34 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 
-# 1. Put your contact/DM link here (Make sure to include https://t.me/...)
-DM_LINK = "https://t.me/galaxy99_kh" # <--- CHANGE THIS TO YOUR ACTUAL DM LINK
-
-# 2. Your updated welcome message
+# Your exact welcome message
 WELCOME_MESSAGE = (
     "សូមស្វាគមន៍មកវេបសាយធំបំផុត ងាយស្រួលលេង📲 និងគួរឱ្យទុកចិត្តបំផុតនៅកម្ពុជា🔥\n"
-    "សេវាកម្ម២៤ម៉ោង: https://t.me/galaxy99_kh\n\n"
-    "👇 ចុចប៊ូតុងខាងក្រោមដើម្បីទទួលបានការបញ្ចុះតម្លៃ 👇" # Khmer text saying "Click the button below to get a discount"
+    "សេវាកម្ម២៤ម៉ោង"
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Sends the welcome message with a link button when /start is issued."""
+    """Sends the welcome message with a clickable link button."""
     
-    # 3. Create the button
+    # Create the button layout
     keyboard = [
         [
+            # This creates the clickable button for your link
             InlineKeyboardButton(
-                text="💬 DM NOW TO GET FREE BONUS", 
-                url=DM_LINK
+                text="💬 DM NOW OR CONTACT ME NOW", 
+                url="https://t.me/galaxy99_kh" # The link you want the button to open
             )
         ]
     ]
     
-    # 4. Attach the keyboard to the message
+    # Wrap the keyboard in InlineKeyboardMarkup
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # 5. Send the message with the button
+    # Send the message along with the button
     await update.message.reply_text(
         text=WELCOME_MESSAGE, 
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
+        disable_web_page_preview=True # This removes the big "VIEW MESSAGE" box from your screenshot
     )
 
 def main() -> None:
