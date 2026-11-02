@@ -11,7 +11,8 @@ logging.basicConfig(
 # Your exact welcome message (no link inside the text)
 WELCOME_MESSAGE = (
     "សូមស្វាគមន៍មកវេបសាយធំបំផុត ងាយស្រួលលេង📲 និងគួរឱ្យទុកចិត្តបំផុតនៅកម្ពុជា🔥\n\n"
-    "សេវាកម្ម២៤ម៉ោង"  https://t.me/galaxy99_kh"
+    "សេវាកម្ម២៤ម៉ោង"
+    "https://t.me/galaxy99_kh"
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
