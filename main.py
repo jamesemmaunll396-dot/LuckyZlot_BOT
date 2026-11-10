@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 import feedparser
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -9,22 +10,19 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# RSS Feed URLs for popular football news categories
 FEEDS = {
-    "pl": "https://www.skysports.com/rss/0,20514,11661,00.xml",       # Premier League
-    "cl": "https://www.skysports.com/rss/0,20514,11979,00.xml",       # Champions League
-    "transfers": "https://www.skysports.com/rss/0,20514,12040,00.xml", # Transfer News
+    "pl": "https://www.skysports.com/rss/0,20514,11661,00.xml",       
+    "cl": "https://www.skysports.com/rss/0,20514,11979,00.xml",       
+    "transfers": "https://www.skysports.com/rss/0,20514,12040,00.xml", 
 }
 
 def build_menu_keyboard():
-    """Builds inline keyboard options for the user."""
     keyboard = [
         [
             InlineKeyboardButton("🏆 Premier League", callback_data="news_pl"),
@@ -37,7 +35,6 @@ def build_menu_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 def fetch_latest_news(feed_key: str, limit: int = 4) -> str:
-    """Fetches and formats top news headlines from an RSS feed."""
     url = FEEDS.get(feed_key)
     if not url:
         return "Category not found."
@@ -55,7 +52,6 @@ def fetch_latest_news(feed_key: str, limit: int = 4) -> str:
     return msg
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Sends start message with options."""
     welcome_text = (
         "Welcome to the **Football News Bot**! ⚽\n\n"
         "Select an option below to get the latest football headlines:"
@@ -67,7 +63,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handles button presses from inline keyboards."""
     query = update.callback_query
     await query.answer()
 
@@ -75,7 +70,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         category = query.data.replace("news_", "")
         news_content = fetch_latest_news(category)
 
-        # Edit message content and attach keyboard again for seamless navigation
         await query.edit_message_text(
             text=news_content,
             reply_markup=build_menu_keyboard(),
@@ -84,17 +78,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
 
 def main() -> None:
-    """Starts the bot using environment token."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN environment variable is missing.")
+
+    # Fix for Python 3.14 event loop initialization
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     application = Application.builder().token(token).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    # Start Polling
     application.run_polling()
 
 if __name__ == "__main__":
