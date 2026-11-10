@@ -1,56 +1,101 @@
 import os
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes
+import feedparser
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
 )
+logger = logging.getLogger(__name__)
 
-# Your exact welcome message (no link inside the text)
-WELCOME_MESSAGE = (
-    "សូមស្វាគមន៍មកវេបសាយធំបំផុត ងាយស្រួលលេង📲 និងគួរឱ្យទុកចិត្តបំផុតនៅកម្ពុជា🔥\n\n"
-    "សេវាកម្ម២៤ម៉ោង"
-    "https://t.me/galaxy99_kh"
-)
+# RSS Feed URLs for popular football news categories
+FEEDS = {
+    "pl": "https://www.skysports.com/rss/0,20514,11661,00.xml",       # Premier League
+    "cl": "https://www.skysports.com/rss/0,20514,11979,00.xml",       # Champions League
+    "transfers": "https://www.skysports.com/rss/0,20514,12040,00.xml", # Transfer News
+}
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Sends the welcome message with a clickable link button."""
-    
-    # Create the button layout
+def build_menu_keyboard():
+    """Builds inline keyboard options for the user."""
     keyboard = [
         [
-            # This creates the clickable button
-            InlineKeyboardButton(
-                text="DM NOW OR CONTACT ME NOW TO GET FREE BONUS", 
-                url="https://t.me/galaxy99_kh" 
-            )
-        ]
+            InlineKeyboardButton("🏆 Premier League", callback_data="news_pl"),
+            InlineKeyboardButton("⭐ Champions League", callback_data="news_cl"),
+        ],
+        [
+            InlineKeyboardButton("🔄 Transfer News", callback_data="news_transfers"),
+        ],
     ]
-    
-    # Wrap the keyboard in InlineKeyboardMarkup
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(keyboard)
 
-    # Send the message along with the button
+def fetch_latest_news(feed_key: str, limit: int = 4) -> str:
+    """Fetches and formats top news headlines from an RSS feed."""
+    url = FEEDS.get(feed_key)
+    if not url:
+        return "Category not found."
+
+    feed = feedparser.parse(url)
+    if not feed.entries:
+        return "Failed to retrieve news at the moment."
+
+    msg = f"⚽ **Latest {feed_key.upper()} News**\n\n"
+    for entry in feed.entries[:limit]:
+        title = entry.get("title", "No Title")
+        link = entry.get("link", "#")
+        msg += f"• [{title}]({link})\n\n"
+
+    return msg
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Sends start message with options."""
+    welcome_text = (
+        "Welcome to the **Football News Bot**! ⚽\n\n"
+        "Select an option below to get the latest football headlines:"
+    )
     await update.message.reply_text(
-        text=WELCOME_MESSAGE, 
-        reply_markup=reply_markup,
-        disable_web_page_preview=True # Keeps the message clean without the big preview box
+        text=welcome_text,
+        reply_markup=build_menu_keyboard(),
+        parse_mode="Markdown"
     )
 
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles button presses from inline keyboards."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.startswith("news_"):
+        category = query.data.replace("news_", "")
+        news_content = fetch_latest_news(category)
+
+        # Edit message content and attach keyboard again for seamless navigation
+        await query.edit_message_text(
+            text=news_content,
+            reply_markup=build_menu_keyboard(),
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
+
 def main() -> None:
-    """Start the bot."""
+    """Starts the bot using environment token."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    
     if not token:
-        raise ValueError("No TELEGRAM_BOT_TOKEN found in environment variables.")
+        raise ValueError("TELEGRAM_BOT_TOKEN environment variable is missing.")
 
     application = Application.builder().token(token).build()
-    application.add_handler(CommandHandler("start", start))
 
-    # drop_pending_updates=True prevents the bot from spamming old /start messages
-    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+
+    # Start Polling
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
